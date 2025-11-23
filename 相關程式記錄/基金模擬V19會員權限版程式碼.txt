@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer, ComposedChart } from 'recharts';
-import { Play, Pause, TrendingUp, TrendingDown, Activity, RotateCcw, AlertCircle, X, Check, MousePointer2, Flag, Download, Copy, FileText, Maximize, Minimize, LogOut, Power, Lock, KeyRound, Database, User, UserCheck, Loader2 } from 'lucide-react';
+import { Play, Pause, TrendingUp, TrendingDown, Activity, RotateCcw, AlertCircle, X, Check, MousePointer2, Flag, Download, Copy, FileText, Maximize, Minimize, LogOut, Power, Lock, KeyRound, Database, User, UserCheck } from 'lucide-react';
 
-// Firebase imports (嚴格邀請制：只保留登入與登出，移除註冊功能)
+// ★★★ Firebase 核心模組引入 ★★★
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 
 // ==========================================
-// 區域 A: Firebase 設定區
+// 區域 A: Firebase 設定區 (請替換為您的真實資料)
 // ==========================================
 
 // Import the functions you need from the SDKs you need
@@ -43,33 +43,15 @@ try {
     console.error("Firebase 初始化失敗，請檢查 firebaseConfig");
 }
 
-
 // ==========================================
-// 區域 B: 基金圖書館 (已更新您的設定)
+// 區域 B: 基金圖書館
 // ==========================================
 const FUNDS_LIBRARY = [
-  { id: 'fund_1', name: '貝萊德環球前瞻股票', file: '/funds/fund_01.json'  },
-  { id: 'fund_2', name: '安聯收益成長', file: '/funds/fund_02.json'  },
-  { id: 'fund_3', name: '貝萊德歐洲靈活股票基金', file: '/funds/fund_03.json'    },
-  { id: 'fund_4', name: '貝萊德日本特別時機基金', file: '/funds/fund_04.json'  },
-  { id: 'fund_5', name: '貝萊德新興市場基金', file: '/funds/fund_05.json'    },
-  { id: 'fund_6', name: '貝萊德拉丁美洲基金', file: '/funds/fund_06.json'  },
-  { id: 'fund_7', name: '安本亞太股票基金', file: '/funds/fund_07.json'    },
-  { id: 'fund_8', name: '貝萊德印度基金', file: '/funds/fund_08.json'  },
-  { id: 'fund_9', name: '摩根中國基金', file: '/funds/fund_09.json'    },
-  { id: 'fund_10', name: '富邦台灣心基金', file: '/funds/fund_10.json'  },
-  { id: 'fund_11', name: '霸菱大東協基金', file: '/funds/fund_11.json'  },
-  { id: 'fund_12', name: '瀚亞投資印尼股票基金', file: '/funds/fund_12.json'  },
-  { id: 'fund_13', name: '摩根泰國基金', file: '/funds/fund_13.json'  },
-  { id: 'fund_14', name: '利安資金越南基金',   file: '/funds/fund_14.json'  },
-  { id: 'fund_15', name: '富坦生技領航基金',   file: '/funds/fund_15.json'  },
-  { id: 'fund_16', name: '貝萊德世界科技基金', file: '/funds/fund_16.json'  },
-  { id: 'fund_17', name: '貝萊德世界礦業基金', file: '/funds/fund_17.json'  },
-  { id: 'fund_18', name: '貝萊德世界黃金基金', file: '/funds/fund_18.json'  },
-  { id: 'fund_19', name: '貝萊德世界能源基金', file: '/funds/fund_19.json'  },
-  { id: 'fund_20', name: '貝萊德永續能源基金', file: '/funds/fund_20.json'  },
-  // ... 未來您可以繼續往下加，保持這個格式即可 ...
-  // { id: 'fund_20', name: '貝萊德永續能源基金', file: '/funds/fund_20.json' },
+  { id: 'fund_1', name: '基金 A (霸菱東歐)', data: [] }, // 請填入數據
+  { id: 'fund_2', name: '基金 B (貝萊德)', data: [] },
+  { id: 'fund_3', name: '基金 C (富蘭克林)', data: [] },
+  { id: 'fund_4', name: '基金 D (摩根)', data: [] },
+  { id: 'fund_5', name: '基金 E (安聯)', data: [] }
 ];
 
 // 1. 隨機數據生成器
@@ -104,14 +86,15 @@ const calculateMA = (data, days, currentIndex) => {
 };
 
 export default function App() {
-  // Auth State
-  const [user, setUser] = useState(null); 
+  // --- 會員系統 State ---
+  const [user, setUser] = useState(null); // 登入的使用者物件
+  const [authMode, setAuthMode] = useState('login'); // 'login' 或 'register'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
-  const [authLoading, setAuthLoading] = useState(true); 
+  const [authLoading, setAuthLoading] = useState(true); // 檢查登入狀態中
 
-  // Game State
+  // --- Game State ---
   const [fullData, setFullData] = useState([]);
   const [currentDay, setCurrentDay] = useState(0);
   const [gameStatus, setGameStatus] = useState('setup'); 
@@ -144,27 +127,53 @@ export default function App() {
 
   const autoPlayRef = useRef(null);
 
-  // Auth Effect
+  // --- Firebase Auth Listener (監聽登入狀態) ---
   useEffect(() => {
-      if (!auth) { setAuthError("Firebase Config Error"); setAuthLoading(false); return; }
-      const unsubscribe = onAuthStateChanged(auth, (u) => { setUser(u); setAuthLoading(false); });
+      if (!auth) {
+          setAuthError("Firebase 未設定正確");
+          setAuthLoading(false);
+          return;
+      }
+      const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+          setUser(currentUser);
+          setAuthLoading(false);
+      });
       return () => unsubscribe();
   }, []);
 
-  // Auth Handlers
-  const handleLogin = async (e) => { 
-      e.preventDefault(); 
-      setAuthError(''); 
-      try { 
-          await signInWithEmailAndPassword(auth, email, password); 
-      } catch (err) { 
-          setAuthError('登入失敗：帳號或密碼錯誤'); 
-      } 
+  // 處理登入
+  const handleLogin = async (e) => {
+      e.preventDefault();
+      setAuthError('');
+      try {
+          await signInWithEmailAndPassword(auth, email, password);
+      } catch (error) {
+          setAuthError('登入失敗：帳號或密碼錯誤');
+      }
   };
 
-  const handleLogout = async () => { await signOut(auth); setGameStatus('shutdown'); setTimeout(() => window.location.reload(), 500); };
+  // 處理註冊 (如果您想開放朋友自己註冊)
+  const handleRegister = async (e) => {
+      e.preventDefault();
+      setAuthError('');
+      try {
+          await createUserWithEmailAndPassword(auth, email, password);
+      } catch (error) {
+          if (error.code === 'auth/email-already-in-use') setAuthError('此信箱已被註冊');
+          else if (error.code === 'auth/weak-password') setAuthError('密碼太弱，至少需6位數');
+          else setAuthError('註冊失敗：' + error.message);
+      }
+  };
 
-  // Init
+  // 處理登出
+  const handleLogout = async () => {
+      await signOut(auth);
+      // 登出後重置遊戲狀態
+      setGameStatus('shutdown');
+      setTimeout(() => window.location.reload(), 500); 
+  };
+
+  // --- Game Logic (Initialization) ---
   useEffect(() => {
     const data = generateRandomData(30);
     setFullData(data);
@@ -172,7 +181,6 @@ export default function App() {
     setIsReady(true);
   }, []);
 
-  // Auto End
   useEffect(() => {
       if (gameStatus === 'playing' && fullData.length > 0) {
           if (currentDay >= fullData.length - 1) {
@@ -182,7 +190,6 @@ export default function App() {
       }
   }, [currentDay, fullData, gameStatus, isAutoPlaying]);
 
-  // Chart Data
   const currentNav = fullData[currentDay]?.nav || 10;
   const chartDataInfo = useMemo(() => {
     if (!isReady || fullData.length === 0) return { data: [], domain: [0, 100] };
@@ -214,47 +221,30 @@ export default function App() {
   const totalAssets = cash + (units * currentNav);
   const roi = initialCapital > 0 ? ((totalAssets - initialCapital) / initialCapital) * 100 : 0;
 
-  // Stop Loss Effect
   useEffect(() => {
     if (units > 0) {
       if (currentNav > highestNavSinceBuy) setHighestNavSinceBuy(currentNav);
       const stopPrice = highestNavSinceBuy * (1 - (customStopLossInput / 100));
-      setWarningActive(highestNavSinceBuy > 0 && currentNav < stopPrice);
+      if (highestNavSinceBuy > 0 && currentNav < stopPrice) setWarningActive(true);
+      else setWarningActive(false);
     } else { setHighestNavSinceBuy(0); setWarningActive(false); }
   }, [currentDay, units, currentNav, highestNavSinceBuy, customStopLossInput]);
 
   const toggleFullscreen = () => setIsCssFullscreen(!isCssFullscreen);
 
-  const startGame = async () => {
-    let data; 
-    let startDay = 0; 
-    let fundName = "模擬基金";
-
+  const startGame = () => {
+    let data; let startDay = 0; let fundName = "模擬基金";
     if (dataSourceType === 'real') {
         const selectedFund = FUNDS_LIBRARY.find(f => f.id === selectedFundId);
-        setGameStatus('loading_data');
-        try {
-            const response = await fetch(selectedFund.file);
-            if (!response.ok) throw new Error("找不到數據檔案，請確認 public/funds/ 下是否有對應 json");
-            const rawData = await response.json();
-            if (rawData && rawData.length > 5) {
-                 data = processRealData(rawData);
-                 startDay = data.length > 60 ? 60 : 0;
-                 fundName = selectedFund.name;
-            } else {
-                 throw new Error("數據過少");
-            }
-        } catch (error) {
-             alert(`讀取基金數據失敗：${error.message}\n將切換為隨機模式。`);
-             data = generateRandomData(30);
-             startDay = 260;
-             fundName = "隨機模擬基金";
+        if (selectedFund && selectedFund.data.length > 5) {
+             data = processRealData(selectedFund.data);
+             startDay = data.length > 60 ? 60 : 0;
+             fundName = selectedFund.name;
+        } else {
+             alert(`錯誤：[${selectedFund?.name}] 尚未輸入足夠數據！\n將自動切換為隨機數據。`);
+             data = generateRandomData(30); startDay = 260; fundName = "隨機模擬基金";
         }
-    } else {
-        data = generateRandomData(30);
-        startDay = 260;
-        fundName = "隨機模擬基金";
-    }
+    } else { data = generateRandomData(30); startDay = 260; fundName = "隨機模擬基金"; }
     setFullData(data); setCash(initialCapital); setCurrentDay(startDay); setCurrentFundName(fundName); setGameStatus('playing');
   };
 
@@ -270,15 +260,19 @@ export default function App() {
   const executeEndGame = () => { setConfirmModal({ show: false, type: null }); setGameStatus('ended'); };
   const triggerExit = () => { if (isAutoPlaying) { clearInterval(autoPlayRef.current); setIsAutoPlaying(false); } setConfirmModal({ show: true, type: 'exit' }); };
   const executeExit = () => { setConfirmModal({ show: false, type: null }); setGameStatus('shutdown'); };
+  
   const advanceDay = () => { if (currentDay >= fullData.length - 1) { setGameStatus('ended'); return; } setCurrentDay(prev => prev + 1); };
   const openTrade = (mode) => { if (isAutoPlaying) toggleAutoPlay(); setTradeMode(mode); setInputAmount(''); };
   const closeTrade = () => { setTradeMode(null); setInputAmount(''); };
   const executeBuy = () => {
     const amount = parseFloat(inputAmount); if (!amount || amount <= 0 || amount > cash) return;
-    const buyUnits = amount / currentNav; const newTotalUnits = units + buyUnits; const newAvgCost = (units * avgCost + amount) / newTotalUnits;
+    const buyUnits = amount / currentNav;
+    const newTotalUnits = units + buyUnits;
+    const newAvgCost = (units * avgCost + amount) / newTotalUnits;
     setAvgCost(newAvgCost); setUnits(newTotalUnits); setCash(prev => prev - amount);
     setTransactions(prev => [{ id: Date.now(), day: currentDay, type: 'BUY', price: currentNav, units: buyUnits, amount: amount, balance: cash - amount }, ...prev]);
-    if (units === 0) setHighestNavSinceBuy(currentNav); closeTrade(); advanceDay();
+    if (units === 0) setHighestNavSinceBuy(currentNav);
+    closeTrade(); advanceDay();
   };
   const executeSell = () => {
     let unitsToSell = parseFloat(inputAmount); if (!unitsToSell || unitsToSell <= 0) return;
@@ -293,7 +287,7 @@ export default function App() {
     if (isAutoPlaying) { clearInterval(autoPlayRef.current); setIsAutoPlaying(false); } 
     else { setTradeMode(null); setIsAutoPlaying(true); autoPlayRef.current = setInterval(() => { setCurrentDay(prev => prev + 1); }, 100); }
   };
-  const generateCSV = () => { /* Same logic */ };
+  const generateCSV = () => { /* Same as before */ };
   const copyToClipboard = () => { 
       let text = `📊 基金模擬戰報\n基金: ${currentFundName}\n最終資產: $${Math.round(totalAssets).toLocaleString()}\n報酬率: ${roi.toFixed(2)}%\n`;
       navigator.clipboard.writeText(text).then(() => { setShowCopyToast(true); setTimeout(() => setShowCopyToast(false), 2000); });
@@ -302,38 +296,67 @@ export default function App() {
   const setSellPercent = (pct) => { if (pct === 1) setInputAmount(units.toString()); else setInputAmount((units * pct).toFixed(2)); };
   const containerStyle = isCssFullscreen ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, width: '100vw', height: '100vh' } : { position: 'relative', height: '100vh', width: '100%' };
 
-  // --- Render ---
+  // --- Render: Auth Login Screen ---
   if (authLoading) return <div className="h-screen bg-slate-950 flex items-center justify-center text-white">系統啟動中...</div>;
-  
-  if (!user) return ( 
-      <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center font-sans p-6">
-          <div className="w-full max-w-sm bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-2xl">
-              <div className="flex justify-center mb-6 text-emerald-500"><Lock size={56} /></div>
-              <h2 className="text-2xl font-bold text-white text-center mb-2">基金操盤手 V21</h2>
-              <p className="text-slate-400 text-center text-sm mb-6">會員專屬登入</p>
-              <form onSubmit={handleLogin} className="space-y-4">
-                  <div><label className="text-xs text-slate-500 ml-1">Email</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-emerald-500 outline-none" placeholder="請輸入管理員發放之帳號"/></div>
-                  <div><label className="text-xs text-slate-500 ml-1">密碼</label><input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-emerald-500 outline-none" placeholder="******"/></div>
-                  <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition-all active:scale-[0.98]">登入系統</button>
-              </form>
-              {authError && <div className="mt-4 p-3 bg-red-900/30 border border-red-800 rounded text-red-400 text-xs text-center">{authError}</div>}
-              <div className="mt-6 text-center text-xs text-slate-600">
-                  本系統採嚴格邀請制，如無帳號請洽管理員
+
+  if (!user) {
+      return (
+          <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center font-sans p-6">
+              <div className="w-full max-w-sm bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-2xl">
+                  <div className="flex justify-center mb-6 text-emerald-500"><Lock size={56} /></div>
+                  <h2 className="text-2xl font-bold text-white text-center mb-2">基金操盤手 V19</h2>
+                  <p className="text-slate-400 text-center text-sm mb-6">會員專屬訓練系統</p>
+                  
+                  <form onSubmit={authMode === 'login' ? handleLogin : handleRegister} className="space-y-4">
+                      <div>
+                          <label className="text-xs text-slate-500 ml-1">Email</label>
+                          <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-emerald-500 outline-none" placeholder="name@example.com"/>
+                      </div>
+                      <div>
+                          <label className="text-xs text-slate-500 ml-1">密碼</label>
+                          <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-emerald-500 outline-none" placeholder="******"/>
+                      </div>
+                      
+                      <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition-all active:scale-[0.98]">
+                          {authMode === 'login' ? '登入系統' : '註冊新帳號'}
+                      </button>
+                  </form>
+
+                  {authError && <div className="mt-4 p-3 bg-red-900/30 border border-red-800 rounded text-red-400 text-xs text-center">{authError}</div>}
+
+                  <div className="mt-6 text-center">
+                      <button onClick={() => {setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError('');}} className="text-slate-500 text-xs hover:text-white underline">
+                          {authMode === 'login' ? '沒有帳號？點此註冊' : '已有帳號？點此登入'}
+                      </button>
+                  </div>
               </div>
           </div>
-      </div>
-  );
+      );
+  }
 
-  if (gameStatus === 'shutdown') return ( <div className="h-screen w-screen bg-black flex flex-col items-center justify-center text-slate-600 font-sans"><Power size={48} className="mb-4 opacity-50" /><p className="text-lg">系統已關閉</p><button onClick={() => window.location.reload()} className="mt-8 px-6 py-2 border border-slate-800 rounded hover:bg-slate-900 hover:text-slate-400 transition-colors">重啟電源</button></div> );
-  
+  // --- Render: Game Screens (Shutdown / Setup / Main) ---
+  if (gameStatus === 'shutdown') {
+      return (
+          <div className="h-screen w-screen bg-black flex flex-col items-center justify-center text-slate-600 font-sans">
+              <Power size={48} className="mb-4 opacity-50" /><p className="text-lg">系統已關閉</p>
+              <button onClick={() => window.location.reload()} className="mt-8 px-6 py-2 border border-slate-800 rounded hover:bg-slate-900 hover:text-slate-400 transition-colors">重啟電源</button>
+          </div>
+      );
+  }
+
   if (gameStatus === 'setup') {
     return (
       <div className="min-h-screen bg-slate-950 text-white p-6 flex flex-col items-center justify-center font-sans">
         <div className="w-full max-w-sm bg-slate-900 rounded-xl p-6 shadow-2xl border border-slate-800 relative">
+            {/* 登出按鈕 */}
             <button onClick={handleLogout} className="absolute top-4 right-4 text-slate-600 hover:text-red-400 transition-colors" title="登出"><LogOut size={20} /></button>
+            
             <div className="flex justify-center mb-4 text-emerald-400"><Activity size={56} strokeWidth={1.5} /></div>
             <h1 className="text-3xl font-bold text-center mb-2 tracking-tight">基金操盤手</h1>
-            <div className="flex items-center justify-center gap-2 mb-6"><UserCheck size={14} className="text-emerald-500"/><span className="text-slate-400 text-xs">{user.email}</span></div>
+            <div className="flex items-center justify-center gap-2 mb-6">
+                <UserCheck size={14} className="text-emerald-500"/>
+                <span className="text-slate-400 text-xs">{user.email}</span>
+            </div>
             
             <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">初始資金</label>
             <input type="number" value={initialCapital} onChange={(e) => setInitialCapital(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 mb-4 text-xl font-mono text-white focus:border-emerald-500 outline-none transition-colors" />
@@ -366,15 +389,8 @@ export default function App() {
     );
   }
 
-  if (gameStatus === 'loading_data') {
-      return (
-          <div className="h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
-              <Loader2 size={48} className="animate-spin text-emerald-500" />
-              <p className="text-slate-400">正在從雲端下載 {FUNDS_LIBRARY.find(f => f.id === selectedFundId)?.name} 數據...</p>
-          </div>
-      );
-  }
-
+  // ... (遊戲主畫面與 V18 相同，省略重複部分以節省篇幅，實際請保留 V18 的 Header, Chart, Controls 結構) ...
+  // 為確保完整性，以下是 Header 和 Chart 部分的關鍵結構，請直接接續上方的 if (gameStatus === 'setup') 區塊後
   return (
     <div style={containerStyle} className="bg-slate-950 text-slate-200 font-sans flex flex-col overflow-hidden transition-all duration-300">
         <header className="bg-slate-900 px-3 py-1 border-b border-slate-800 flex justify-between items-center shrink-0 h-12 z-30 relative shadow-md">
