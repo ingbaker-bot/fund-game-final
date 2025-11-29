@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. 使用者設定 (維持不變)
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 2. 遊戲成績 (維持不變)
+    match /game_results/{resultId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null 
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.roi < 5000
+                    && request.resource.data.fundId != null
+                    && request.resource.data.timestamp != null;
+      allow update, delete: if false;
+    }
+
+    // =================================================
+    // ★★★ 3. 新增：賽季設定 (關鍵修正) ★★★
+    // =================================================
+    match /seasons/{seasonId} {
+      // 允許所有已登入玩家讀取 (這樣才能知道現在比什麼)
+      allow read: if request.auth != null;
+      
+      // 禁止玩家修改賽季規則 (只有管理者能在後台改)
+      allow write: if false;
+    }
+  }
+}

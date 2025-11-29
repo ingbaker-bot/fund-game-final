@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =================================================
+    // 1. 原有 V1.2 規則 (保護用戶與賽季資料) - 請保留
+    // =================================================
+    
+    // 使用者設定
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 遊戲成績
+    match /game_results/{resultId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.roi < 5000
+                    && request.resource.data.fundId != null
+                    && request.resource.data.timestamp != null;
+      allow update, delete: if false;
+    }
+
+    // 賽季設定
+    match /seasons/{seasonId} {
+      allow read: if request.auth != null;
+      allow write: if false; // 只有管理員能改 (通常透過後台)
+    }
+    
+    // ticker_data (跑馬燈資料，如果有用到的話)
+    match /ticker_data/{docId} {
+       allow read: if true;
+    }
+
+    // =================================================
+    // 2. ★★★ 新增：V2 電競版專用規則 ★★★
+    // =================================================
+    
+    // 戰鬥房間與其子集合 (players)
+    // 因為現場活動是掃 QR Code 免登入遊玩，所以這裡必須開放 public 讀寫
+    // 但風險僅限於 "battle_rooms" 這個集合，不會影響上面的 users 或 game_results
+    match /battle_rooms/{roomId} {
+      allow read, write: if true;
+      
+      // 允許讀寫房間內的玩家子集合
+      match /players/{playerId} {
+        allow read, write: if true;
+      }
+    }
+  }
+}

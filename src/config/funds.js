@@ -1,0 +1,26 @@
+// 這裡只存放純淨的資料，不要把「🔒」寫死在名字裡，讓程式根據權限自動判斷
+export const FUNDS_LIBRARY = [
+  { id: 'fund_A', name: '新手入門', file: '/funds/fund_0A.json' },
+  { id: 'fund_B', name: '教育成長', file: '/funds/fund_0B.json' },
+  { id: 'fund_C', name: '高手展望', file: '/funds/fund_0C.json' },
+  { id: 'fund_1', name: '貝萊德環球前瞻股票', file: '/funds/fund_01.json' },
+  { id: 'fund_2', name: '安聯收益成長', file: '/funds/fund_02.json' },
+  { id: 'fund_3', name: '貝萊德歐洲靈活股票基金', file: '/funds/fund_03.json' },
+  { id: 'fund_4', name: '貝萊德日本特別時機基金', file: '/funds/fund_04.json' },
+  { id: 'fund_5', name: '貝萊德新興市場基金', file: '/funds/fund_05.json' },
+  { id: 'fund_6', name: '貝萊德拉丁美洲基金', file: '/funds/fund_06.json' },
+  { id: 'fund_7', name: '安本亞太股票基金', file: '/funds/fund_07.json' },
+  { id: 'fund_8', name: '貝萊德印度基金', file: '/funds/fund_08.json' },
+  { id: 'fund_9', name: '摩根中國基金', file: '/funds/fund_09.json' },
+  { id: 'fund_10', name: '富邦台灣心基金', file: '/funds/fund_10.json' },
+  { id: 'fund_11', name: '霸菱大東協基金', file: '/funds/fund_11.json' },
+  { id: 'fund_12', name: '瀚亞投資印尼股票基金', file: '/funds/fund_12.json' },
+  { id: 'fund_13', name: '摩根泰國基金', file: '/funds/fund_13.json' },
+  { id: 'fund_14', name: '利安資金越南基金', file: '/funds/fund_14.json' },
+  { id: 'fund_15', name: '富坦生技領航基金', file: '/funds/fund_15.json' },
+  { id: 'fund_16', name: '貝萊德世界科技基金', file: '/funds/fund_16.json' },
+  { id: 'fund_17', name: '貝萊德世界礦業基金', file: '/funds/fund_17.json' },
+  { id: 'fund_18', name: '貝萊德世界黃金基金', file: '/funds/fund_18.json' },
+  { id: 'fund_19', name: '貝萊德世界能源基金', file: '/funds/fund_19.json' },
+  { id: 'fund_20', name: '貝萊德永續能源基金', file: '/funds/fund_20.json' }
+];
